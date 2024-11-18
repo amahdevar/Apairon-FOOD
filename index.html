@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سیستم سفارش ناهار</title>
+    <style>
+        body {
+            font-family: "Vazir", sans-serif;
+            margin: 0;
+            padding: 0;
+            direction: rtl;
+            text-align: center;
+            background-color: #f5f5f5;
+        }
+
+        h1 {
+            margin: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr); /* Exclude Thursdays and Fridays */
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .day-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background-color: #e9e9e9;
+            position: relative;
+        }
+
+        .day-header {
+            font-size: 12px;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .day {
+            font-size: 14px;
+            padding: 10px;
+            background-color: #4caf50;
+            color: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        select {
+            width: 100%;
+            padding: 5px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #4caf50;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        #modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        #modal button {
+            background-color: #4caf50;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>سیستم سفارش ناهار ماهانه</h1>
+    <div class="container" id="auth-container">
+        <h2>ورود کاربر</h2>
+        <input type="text" id="username" placeholder="نام کاربری">
+        <input type="password" id="password" placeholder="رمز عبور">
+        <button onclick="login()">ورود</button>
+    </div>
+
+    <div class="container" id="calendar-container" style="display: none;">
+        <div id="calendar" class="calendar"></div>
+        <button onclick="submitOrder()">ثبت سفارش</button>
+    </div>
+
+    <div id="modal">
+        <div id="modal-content">
+            <p id="modal-message"></p>
+            <button onclick="closeModal()">باشه</button>
+        </div>
+    </div>
+
+    <script>
+        const weekdays = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه'];
+        const orders = {}; // Orders object to hold user selections
+        let isLoggedIn = false; // Tracks login status
+
+        // Render Calendar
+        function renderCalendar() {
+            const calendar = document.getElementById('calendar');
+            const currentDate = new Date();
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const date = new Date(year, month, i);
+                const weekday = weekdays[date.getDay()];
+
+                // Skip Thursdays and Fridays
+                if (weekday === undefined) continue;
+
+                const dayContainer = document.createElement('div');
+                dayContainer.className = 'day-container';
+
+                // Add weekday name
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'day-header';
+                dayHeader.textContent = weekday;
+                dayContainer.appendChild(dayHeader);
+
+                // Add day number
+                const day = document.createElement('div');
+                day.className = 'day';
+                day.textContent = i;
+                dayContainer.appendChild(day);
+
+                // Add food selection dropdown
+                const foodSelect = document.createElement('select');
+                foodSelect.innerHTML = `
+                    <option value="">انتخاب غذا</option>
+                    <option value="غذای ۱">غذای ۱</option>
+                    <option value="غذای ۲">غذای ۲</option>
+                `;
+                foodSelect.onchange = () => {
+                    orders[i] = foodSelect.value;
+                };
+                dayContainer.appendChild(foodSelect);
+
+                calendar.appendChild(dayContainer);
+            }
+        }
+
+        // Open Modal
+        function openModal(message) {
+            const modal = document.getElementById('modal');
+            document.getElementById('modal-message').textContent = message;
+            modal.style.display = 'flex';
+        }
+
+        // Close Modal
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        // Submit Order
+        async function submitOrder() {
+            if (Object.keys(orders).length === 0) {
+                openModal('لطفاً حداقل یک روز غذا انتخاب کنید.');
+                return;
+            }
+
+            // Send orders to backend
+            const response = await fetch('http://your-backend-url/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orders }),
+            });
+
+            if (response.ok) {
+                openModal('سفارش شما ثبت شد!');
+            } else {
+                openModal('خطا در ثبت سفارش. لطفاً دوباره تلاش کنید.');
+            }
+        }
+
+        // Login
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const response = await fetch('http://your-backend-url/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+            });
+
+            if (response.ok) {
+                isLoggedIn = true;
+                document.getElementById('auth-container').style.display = 'none';
+                document.getElementById('calendar-container').style.display = 'block';
+                renderCalendar();
+            } else {
+                openModal('نام کاربری یا رمز عبور اشتباه است.');
+            }
+        }
+    </script>
+</body>
+</html>
