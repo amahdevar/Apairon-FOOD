@@ -2,6 +2,7 @@
   "name": "lunch-ordering-system",
   "version": "1.0.0",
   "main": "index.js",
+  "homepage": "https://apairon-food.pages.dev/",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
