@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import Login from './LoginComponent';
-import Register from './RegisterComponent';
-import Orders from './OrdersComponent';
+import Login from './components/LoginComponent';
+import Register from './components/RegisterComponent';
+import Orders from './components/OrdersComponent';
 
 const App = () => {
     const [token, setToken] = useState(localStorage.getItem('token') || null);
